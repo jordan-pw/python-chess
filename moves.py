@@ -12,9 +12,8 @@ rank_5 = np.uint64(1095216660480)
 rank_7 = np.uint64(71776119061217280)
 rank_8 = np.uint64(18374686479671623680)
 
-precompute.precompute_knight_moves()
-knight_moves = precompute.knight_moves
-knight_bitboards = precompute.knight_bitboards
+knight_moves_table, knight_bitboards_table = precompute.precompute_knight_moves()
+king_moves_table, king_bitboards_table = precompute.precompute_king_moves()
 
 class Move:
     def __init__(self, from_square, to_square, move_type, promoted_piece=None):
@@ -48,11 +47,14 @@ class WhiteMoves:
         self.white_noncapturable = ~(wp|wn|wb|wr|wq|wk|bk)
         self.black_pieces = bp|bn|bb|br|bq
         self.empty = ~(wp|wn|wb|wr|wq|wk|bp|bn|bb|br|bq|bk)
+        self.castle_left_flag = True
+        self.castle_right_flag = True
 
     def possible_moves(self, history, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk):
         move_list = list()
         move_list += self.possible_pawn_moves(history, wp, bp)
         move_list += self.possible_knight_moves(wn)
+        move_list += self.possible_king_moves(wk, wr)
         print(move_list)
 
     def possible_pawn_moves(self, history, wp, bp):
@@ -178,20 +180,18 @@ class WhiteMoves:
         move_list = list()
         knight_moves = np.uint64()
 
-        print("knights")
-
         knight_squares = bitscan.square_index_serialization(wn)
 
         for knight_square in knight_squares:
             # Moves
-            knight_moves = knight_bitboards[knight_square] & self.empty
+            knight_moves = knight_bitboards_table[knight_square] & self.empty
             target_squares = bitscan.square_index_serialization(knight_moves)
             for target in target_squares:
                 start_square = knight_square
                 move_list.append(Move(start_square, target, MoveType.NORMAL))
             
             # Capture
-            knight_moves = knight_bitboards[knight_square] & self.black_pieces
+            knight_moves = knight_bitboards_table[knight_square] & self.black_pieces
             target_squares = bitscan.square_index_serialization(knight_moves)
             for target in target_squares:
                 start_square = knight_square
@@ -199,28 +199,46 @@ class WhiteMoves:
 
         return move_list
 
-    # def knight_attacks(self, square):
-    #     west = np.uint64()
-    #     east = np.uint64()
-    #     knight_attacks = np.uint64()
+    def possible_king_moves(self, wk, wr):
 
-    #     east = east_one(wn)
-    #     west = west_one(wn)
-    #     attacks = (east | west) << np.uint64(16)
-    #     attacks |= (east | west) >> np.uint64(16)
+        move_list = list()
+        king_moves = np.uint64()
 
-    #     east = east_one(east)
-    #     west = west_one(west)
-    #     attacks = (east | west) << np.uint64(8)
-    #     attacks |= (east | west) >> np.uint64(8)
+        king_squares = bitscan.square_index_serialization(wk)
 
-    #     return knight_attacks
+        for king_square in king_squares:
+            # Moves
+            king_moves = king_bitboards_table[king_square] & self.empty
+            target_squares = bitscan.square_index_serialization(king_moves)
+            for target in target_squares:
+                start_square = king_square
+                move_list.append(Move(start_square, target, MoveType.NORMAL))
+            
+            # Capture
+            king_moves = king_bitboards_table[king_square] & self.black_pieces
+            target_squares = bitscan.square_index_serialization(king_moves)
+            for target in target_squares:
+                start_square = king_square
+                move_list.append(Move(start_square, target, MoveType.CAPTURE))
 
+            # Castle left
+            if self.castle_left_flag:
+                king_moves = west_one(west_one(west_one(west_one(wk)))) & wr & (self.empty >> np.uint64(1)) & (self.empty >> np.uint64(2)) & (self.empty >> np.uint64(3))
+                target_squares = bitscan.square_index_serialization(king_moves)
+                for target in target_squares:
+                    start_square = king_square
+                    move_list.append(Move(start_square, target, MoveType.EN_PASSANT))
 
+            # Castle right
+            if self.castle_right_flag:
+                king_moves = east_one(east_one(east_one(wk))) & wr & (self.empty << np.uint64(1)) & (self.empty << np.uint64(2))
+                target_squares = bitscan.square_index_serialization(king_moves)
+                for target in target_squares:
+                    start_square = king_square
+                    move_list.append(Move(start_square, target, MoveType.EN_PASSANT))
 
-    def possible_king_moves(self):
-        pass
-
+        return move_list
+        
     def horizontal_slide_moves(self):
         pass
 
