@@ -12,7 +12,7 @@ index64 = [
 ]
 
 def square_index_serialization(bitboard):
-    move_list = []
+    move_list = list()
     if bitboard:
         while(bitboard):
             square = bitscan_forward(bitboard)
