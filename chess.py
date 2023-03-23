@@ -1,9 +1,13 @@
 import numpy as np
-import moves
+import move_gen
+import move
 import board
 
+# pipiris
+
+
 chessboard = [
-    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], #56-64
+    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], #56-63
     ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'], #48-55
     [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], #40-47
     [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], #32-39
@@ -19,7 +23,10 @@ b.print_board()
 
 wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk = b.get_all_bitboards()
 history = []
-history.append(moves.Move(52, 34, moves.MoveType.PAWN_DOUBLE))
+history.append(move.Move(1, move.PieceType.PAWN, 12, 28, move.MoveType.PAWN_DOUBLE))
 
-white_moves = moves.WhiteMoves(wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk)
-white_moves.possible_moves(history, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk)
+white_moves = move_gen.Moves(b, 1)
+# white_moves.possible_moves(history, b)
+
+black_moves = move_gen.Moves(b, -1)
+black_moves.possible_moves(history, b)
