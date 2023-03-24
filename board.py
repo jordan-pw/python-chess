@@ -1,6 +1,6 @@
 import numpy as np
 
-from move import Move, MoveType, Promotion, PieceType
+from move import MoveType
 
 def binarystring_to_bitboard(binary):
     bitboard = np.uint64(int(binary, 2))
@@ -42,43 +42,28 @@ class Board:
             'bq': bq, 
             'bk': bk
         }
+
+        self.white_attacks = np.uint64()
+        self.black_attacks = np.uint64()
+
+        self.black_castle_left_flag = True
+        self.black_castle_right_flag = True
+        self.white_castle_left_flag = True
+        self.white_castle_right_flag = True
+
         self.history = list()
 
     def make_move(self, m):
         # Standard Move
+        if m.color == 1:
+            col_char = 'w'
+        if m.color == -1:
+            col_char = 'b'
+        piece = f"{col_char}{m.piece.value}"
+
         if m.move_type == MoveType.NORMAL or m.move_type == MoveType.PAWN_DOUBLE:
-            match m.piece:
-                case PieceType.PAWN:
-                    if m.color == 1:
-                        self.move_piece('wp', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bp', m.from_square, m.to_square)
-                case PieceType.KNIGHT:
-                    if m.color == 1:
-                        self.move_piece('wn', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bn', m.from_square, m.to_square)
-                case PieceType.ROOK:
-                    if m.color == 1:
-                        self.move_piece('wr', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('br', m.from_square, m.to_square)
-                case PieceType.BISHOP:
-                    if m.color == 1:
-                        self.move_piece('wb', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bb', m.from_square, m.to_square)
-                case PieceType.QUEEN:
-                    if m.color == 1:
-                        self.move_piece('wq', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bq', m.from_square, m.to_square)
-                case PieceType.KING:
-                    if m.color == 1:
-                        self.move_piece('wk', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bk', m.from_square, m.to_square)
-        
+            self.move_piece(piece, m.from_square, m.to_square)
+
         # Castle
         if m.move_type == MoveType.CASTLE_KINGSIDE:
             rook_start = m.to_square - 2
@@ -104,38 +89,7 @@ class Board:
 
             cap_piece = self.piece_at_square(m.to_square)
             self.remove_piece(cap_piece, m.to_square)
-            
-            match m.piece:
-                case PieceType.PAWN:
-                    if m.color == 1:
-                        self.move_piece('wp', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bp', m.from_square, m.to_square)
-                case PieceType.KNIGHT:
-                    if m.color == 1:
-                        self.move_piece('wn', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bn', m.from_square, m.to_square)
-                case PieceType.ROOK:
-                    if m.color == 1:
-                        self.move_piece('wr', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('br', m.from_square, m.to_square)
-                case PieceType.BISHOP:
-                    if m.color == 1:
-                        self.move_piece('wb', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bb', m.from_square, m.to_square)
-                case PieceType.QUEEN:
-                    if m.color == 1:
-                        self.move_piece('wq', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bq', m.from_square, m.to_square)
-                case PieceType.KING:
-                    if m.color == 1:
-                        self.move_piece('wk', m.from_square, m.to_square)
-                    else:
-                        self.move_piece('bk', m.from_square, m.to_square)
+            self.move_piece(piece, m.from_square, m.to_square)
 
         # Promotion
         if m.move_type == MoveType.PROMOTION:
@@ -147,27 +101,9 @@ class Board:
                 self.remove_piece('wp', m.from_square)
             else:
                 self.remove_piece('bp', m.from_square)
-            match m.promoted_piece:
-                case Promotion.QUEEN:
-                    if m.color == 1:
-                        self.add_piece('wq', m.to_square)
-                    else:
-                        self.add_piece('bq', m.to_square)
-                case Promotion.ROOK:
-                    if m.color == 1:
-                        self.add_piece('wr', m.to_square)
-                    else:
-                        self.add_piece('br', m.to_square)
-                case Promotion.BISHOP:
-                    if m.color == 1:
-                        self.add_piece('wb', m.to_square)
-                    else:
-                        self.add_piece('bb', m.to_square)
-                case Promotion.KNIGHT:
-                    if m.color == 1:
-                        self.add_piece('wn', m.to_square)
-                    else:
-                        self.add_piece('bn', m.to_square)
+            
+            prom_piece = f"{col_char}{m.promoted_piece.value}"
+            self.add_piece(prom_piece, m.to_square)
 
         self.history.append(m)
 
@@ -194,12 +130,15 @@ class Board:
                 return piece
         return None
 
-    def is_piece_attacked(self, piece, attacks):
+    def is_piece_attacked(self, piece, col):
+        if col == 1:
+            attacks = self.black_attacks
+        if col == -1:
+            attacks = self.white_attacks
         if self.pieces[piece] & attacks:
             return True
         else:
             return False
-
 
     def print_board(self):
         chessboard = [
@@ -273,5 +212,29 @@ class Board:
                 case 'k':
                     self.pieces['bk'] += binarystring_to_bitboard(binary)
 
+        self.white_pieces = self.pieces['wp']|self.pieces['wn']|self.pieces['wb']|self.pieces['wr']|self.pieces['wq']|self.pieces['wk']
+        self.black_pieces = self.pieces['bp']|self.pieces['bn']|self.pieces['bb']|self.pieces['br']|self.pieces['bq']|self.pieces['bk']
+
     def get_all_bitboards(self):
         return self.pieces['wp'], self.pieces['wn'], self.pieces['wb'], self.pieces['wr'], self.pieces['wq'], self.pieces['wk'], self.pieces['bp'], self.pieces['bn'], self.pieces['bb'], self.pieces['br'], self.pieces['bq'], self.pieces['bk']
+    
+    def get_history(self):
+        return self.history
+
+    def can_castle_left(self, color):
+        if color == 1:
+            return self.white_castle_left_flag
+        if color == -1:
+            return self.black_castle_left_flag
+        
+    def can_castle_right(self, color):
+        if color == 1:
+            return self.white_castle_right_flag
+        if color == -1:
+            return self.black_castle_right_flag
+        
+    def update_white_attacks(self, attacks):
+        self.white_attacks = attacks
+
+    def update_black_attacks(self, attacks):
+        self.black_attacks = attacks

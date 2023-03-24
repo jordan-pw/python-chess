@@ -23,18 +23,18 @@ class MoveType(Enum):
     CASTLE_QUEENSIDE = 7
 
 class Promotion(Enum):
-    QUEEN = 1
-    KNIGHT = 2
-    ROOK = 3
-    BISHOP = 4
+    QUEEN = 'q'
+    KNIGHT = 'n'
+    ROOK = 'r'
+    BISHOP = 'b'
 
 class PieceType(Enum):
-    PAWN = 1
-    KNIGHT = 2
-    ROOK = 3
-    BISHOP = 4
-    QUEEN = 5
-    KING = 6
+    PAWN = 'p'
+    KNIGHT = 'n'
+    ROOK = 'r'
+    BISHOP = 'b'
+    QUEEN = 'q'
+    KING = 'k'
 
 class Color(Enum):
     WHITE = 1

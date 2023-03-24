@@ -19,31 +19,22 @@ king_moves_table, king_bitboards_table = precompute.precompute_king_moves()
 rays_table = precompute.precompute_rays()
 
 class Moves:
-    def __init__(self, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk, col):
+    def __init__(self, col):
         self.color = col # 1 = white, -1 = black
-
-        # Initialize noncapturable pieces
-        if self.color == 1:
-            self.noncapturable = ~(wp|wn|wb|wr|wq|wk|bk)
-        if self.color == -1:
-            self.noncapturable = ~(bp|bn|bb|br|bq|bk|wk)
-
-        # Get opposing pieces
-        if self.color == 1:
-            self.opp_pieces = bp|bn|bb|br|bq|bk
-        if self.color == -1:
-            self.opp_pieces = wp|wn|wb|wr|wq|wk
-
-        self.empty = ~(wp|wn|wb|wr|wq|wk|bp|bn|bb|br|bq|bk)
-        
         self.castle_left_flag = True
         self.castle_right_flag = True
-
         self.attacks = np.uint64(0)
+        self.opp_pieces = np.uint64()
+        self.empty = np.uint64()
 
     def possible_moves(self, history, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk):
         move_list = list()
         self.attacks = np.uint64(0)
+        if self.color == 1:
+            self.opp_pieces = bp|bn|bb|br|bq|bk
+        if self.color == -1:
+            self.opp_pieces = wp|wn|wb|wr|wq|wk
+        self.empty = ~(wp|wn|wb|wr|wq|wk|bp|bn|bb|br|bq|bk)
         if self.color == 1:
             move_list += self.possible_pawn_moves(history, wp, bp)
             move_list += self.possible_knight_moves(wn)
@@ -61,18 +52,27 @@ class Moves:
 
         return move_list, self.attacks
 
-    def legal_moves(self, b, move_list, opp_attacks):
+    def legal_moves(self, b, move_list):
         legal_move_list = list()
-
-        print(opp_attacks)
 
         for m in move_list:
             temp_board = deepcopy(b)
             temp_board.make_move(m)
+            temp_history = temp_board.get_history()
 
-            if self.color == 1 and not temp_board.is_piece_attacked('wk', opp_attacks):
+            wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk = temp_board.get_all_bitboards()
+            if self.color == 1:
+                temp_moves = Moves(-1) 
+                temp_list, temp_attacks = temp_moves.possible_moves(temp_history, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk)
+                temp_board.update_black_attacks(temp_attacks)
+            if self.color == -1:
+                temp_moves = Moves(1) 
+                temp_list, temp_attacks = temp_moves.possible_moves(temp_history, wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk)
+                temp_board.update_white_attacks(temp_attacks)
+
+            if self.color == 1 and not temp_board.is_piece_attacked('wk', 1):
                 legal_move_list.append(m)
-            if self.color == -1 and not temp_board.is_piece_attacked('bk', opp_attacks):
+            if self.color == -1 and not temp_board.is_piece_attacked('bk', -1):
                 legal_move_list.append(m)
 
         return legal_move_list
@@ -101,10 +101,10 @@ class Moves:
             pawn_moves = southeast_one(p) & self.opp_pieces & ~rank_1 & ~file_a
             offset = -7
 
+        self.attacks |= pawn_moves
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - offset
-            self.attacks |= pawn_moves
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.CAPTURE))
 
         # Capture left
@@ -114,11 +114,11 @@ class Moves:
         if self.color == -1:
             pawn_moves = southwest_one(p) & self.opp_pieces & ~rank_1 & ~file_h
             offset = -9
-            
+
+        self.attacks |= pawn_moves     
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - offset
-            self.attacks |= pawn_moves
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.CAPTURE))
 
         return move_list
@@ -134,6 +134,7 @@ class Moves:
         if self.color == -1:
             pawn_moves = south_one(p) & self.empty & ~rank_1
         
+        self.attacks |= pawn_moves
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - (8 * self.color)
@@ -145,6 +146,7 @@ class Moves:
         if self.color == -1:
             pawn_moves = south_one(south_one(p)) & self.empty & (self.empty >> np.uint64(8)) & rank_5
         
+        self.attacks |= pawn_moves
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - (16 * self.color)
@@ -165,10 +167,10 @@ class Moves:
             pawn_moves = southeast_one(p) & self.opp_pieces & rank_1 & ~file_a
             offset = -7
 
+        self.attacks |= pawn_moves
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - offset
-            self.attacks |= pawn_moves
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.PROMOTION, Promotion.QUEEN))
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.PROMOTION, Promotion.KNIGHT))
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.PROMOTION, Promotion.ROOK))
@@ -182,10 +184,10 @@ class Moves:
             pawn_moves = southwest_one(p) & self.opp_pieces & rank_1 & ~file_h
             offset = -9
 
+        self.attacks |= pawn_moves
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - offset
-            self.attacks |= pawn_moves
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.PROMOTION, Promotion.QUEEN))
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.PROMOTION, Promotion.KNIGHT))
             move_list.append(Move(self.color, PieceType.PAWN, start_square, target, MoveType.PROMOTION, Promotion.ROOK))
@@ -197,6 +199,7 @@ class Moves:
         if self.color == -1:
             pawn_moves = south_one(p) & self.empty & rank_1
         
+        self.attacks |= pawn_moves
         target_squares = bitutils.square_index_serialization(pawn_moves)
         for target in target_squares:
             start_square = target - (8 * self.color)
@@ -225,7 +228,7 @@ class Moves:
                 for target in target_squares:
                     start_square = target - (1 * self.color)
                     end_square = target + (8 * self.color)
-                    self.attacks |= pawn_moves
+                    self.attacks |= np.uint64(1) << np.uint64(end_square)
                     if target == history[-1].to_square:
                         move_list.append(Move(self.color, PieceType.PAWN, start_square, end_square, MoveType.EN_PASSANT))
 
@@ -239,7 +242,7 @@ class Moves:
                 for target in target_squares:
                     start_square = target + (1 * self.color)
                     end_square = target + (8 * self.color)
-                    self.attacks |= pawn_moves
+                    self.attacks |= np.uint64(1) << np.uint64(end_square)
                     if target == history[-1].to_square:
                         move_list.append(Move(self.color, PieceType.PAWN, start_square, end_square, MoveType.EN_PASSANT))
 
@@ -256,6 +259,7 @@ class Moves:
             # Moves
             knight_moves = knight_bitboards_table[knight_square] & self.empty
             target_squares = bitutils.square_index_serialization(knight_moves)
+            self.attacks |= knight_moves
             for target in target_squares:
                 start_square = knight_square
                 move_list.append(Move(self.color, PieceType.KNIGHT, start_square, target, MoveType.NORMAL))
@@ -263,6 +267,7 @@ class Moves:
             # Capture
             knight_moves = knight_bitboards_table[knight_square] & self.opp_pieces
             target_squares = bitutils.square_index_serialization(knight_moves)
+            self.attacks |= knight_moves
             for target in target_squares:
                 start_square = knight_square
                 self.attacks |= knight_moves
@@ -294,6 +299,7 @@ class Moves:
             # Moves
             king_moves = king_bitboards_table[king_square] & self.empty
             target_squares = bitutils.square_index_serialization(king_moves)
+            self.attacks |= king_moves
             for target in target_squares:
                 start_square = king_square
                 move_list.append(Move(self.color, PieceType.KING, start_square, target, MoveType.NORMAL))
@@ -301,9 +307,9 @@ class Moves:
             # Capture
             king_moves = king_bitboards_table[king_square] & self.opp_pieces
             target_squares = bitutils.square_index_serialization(king_moves)
+            self.attacks |= king_moves
             for target in target_squares:
                 start_square = king_square
-                self.attacks |= king_moves
                 move_list.append(Move(self.color, PieceType.KING, start_square, target, MoveType.CAPTURE))
 
             # Castle kingside
@@ -312,6 +318,7 @@ class Moves:
                 target_squares = bitutils.square_index_serialization(king_moves)
                 for target in target_squares:
                     start_square = king_square
+                    self.attacks |= np.uint64(1) << np.uint64(target+2)
                     move_list.append(Move(self.color, PieceType.KING, start_square, target+2, MoveType.CASTLE_QUEENSIDE))
 
             # Castle queenside
@@ -320,6 +327,7 @@ class Moves:
                 target_squares = bitutils.square_index_serialization(king_moves)
                 for target in target_squares:
                     start_square = king_square
+                    self.attacks |= np.uint64(1) << np.uint64(target-1)
                     move_list.append(Move(self.color, PieceType.KING, start_square, target-1, MoveType.CASTLE_KINGSIDE))
 
         return move_list
@@ -346,9 +354,10 @@ class Moves:
                 rf_attacks = rf_moves & self.opp_pieces
                 rf_moves &= self.empty
 
+                self.attacks |= rf_attacks
+                self.attacks |= rf_moves
                 target_squares = bitutils.square_index_serialization(rf_attacks)
                 for target in target_squares:
-                    self.attacks |= rf_attacks
                     move_list.append(Move(self.color, p, start_square, target, MoveType.CAPTURE))
 
                 target_squares = bitutils.square_index_serialization(rf_moves)
@@ -367,9 +376,10 @@ class Moves:
                 rf_attacks = rf_moves & self.opp_pieces
                 rf_moves &= self.empty
                 
+                self.attacks |= rf_attacks
+                self.attacks |= rf_moves
                 target_squares = bitutils.square_index_serialization(rf_attacks)
                 for target in target_squares:
-                    self.attacks |= rf_attacks
                     move_list.append(Move(self.color, p, start_square, target, MoveType.CAPTURE))
 
                 target_squares = bitutils.square_index_serialization(rf_moves)
@@ -399,9 +409,10 @@ class Moves:
                 diag_attacks = diag_moves & self.opp_pieces
                 diag_moves &= self.empty
 
+                self.attacks |= diag_attacks
+                self.attacks |= diag_moves
                 target_squares = bitutils.square_index_serialization(diag_attacks)
                 for target in target_squares:
-                    self.attacks |= diag_attacks
                     move_list.append(Move(self.color, p, start_square, target, MoveType.CAPTURE))
 
                 target_squares = bitutils.square_index_serialization(diag_moves)
@@ -420,9 +431,10 @@ class Moves:
                 diag_attacks = diag_moves & self.opp_pieces
                 diag_moves &= self.empty
                 
+                self.attacks |= diag_attacks
+                self.attacks |= diag_moves
                 target_squares = bitutils.square_index_serialization(diag_attacks)
                 for target in target_squares:
-                    self.attacks |= diag_attacks
                     move_list.append(Move(self.color, p, start_square, target, MoveType.CAPTURE))
 
                 target_squares = bitutils.square_index_serialization(diag_moves)
@@ -431,6 +443,9 @@ class Moves:
                 
         return move_list
 
+    def update_castle_flag(self, l, r):
+        self.castle_left_flag = l
+        self.castle_right_flag = r
 
 # class WhiteMoves:
 #     def __init__(self, b):
