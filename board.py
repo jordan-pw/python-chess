@@ -66,7 +66,7 @@ class Board:
 
         # Castle
         if m.move_type == MoveType.CASTLE_KINGSIDE:
-            rook_start = m.to_square - 2
+            rook_start = m.to_square - 1
             rook_target = m.to_square + 1
             if m.color == 1:
                 self.move_piece('wk', m.from_square, m.to_square)
@@ -79,8 +79,8 @@ class Board:
                 self.black_castle_right_flag = False
                 self.black_castle_left_flag = False
         if m.move_type == MoveType.CASTLE_QUEENSIDE:
-            rook_start = m.to_square + 1
-            rook_target = m.to_square - 2
+            rook_start = m.to_square - 2
+            rook_target = m.to_square + 1
             if m.color == 1:
                 self.move_piece('wk', m.from_square, m.to_square)
                 self.move_piece('wr', rook_start, rook_target)

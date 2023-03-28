@@ -312,7 +312,7 @@ class Moves:
                 start_square = king_square
                 move_list.append(Move(self.color, PieceType.KING, start_square, target, MoveType.CAPTURE))
 
-            # Castle kingside
+            # Castle queenside
             if self.castle_left_flag:
                 king_moves = west_one(west_one(west_one(west_one(k)))) & r & (self.empty >> np.uint64(1)) & (self.empty >> np.uint64(2)) & (self.empty >> np.uint64(3))
                 target_squares = bitutils.square_index_serialization(king_moves)
@@ -321,7 +321,7 @@ class Moves:
                     self.attacks |= np.uint64(1) << np.uint64(target+2)
                     move_list.append(Move(self.color, PieceType.KING, start_square, target+2, MoveType.CASTLE_QUEENSIDE))
 
-            # Castle queenside
+            # Castle kingside
             if self.castle_right_flag:
                 king_moves = east_one(east_one(east_one(k))) & r & (self.empty << np.uint64(1)) & (self.empty << np.uint64(2))
                 target_squares = bitutils.square_index_serialization(king_moves)
