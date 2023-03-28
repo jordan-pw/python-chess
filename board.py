@@ -71,18 +71,26 @@ class Board:
             if m.color == 1:
                 self.move_piece('wk', m.from_square, m.to_square)
                 self.move_piece('wr', rook_start, rook_target)
+                self.white_castle_right_flag = False
+                self.white_castle_left_flag = False
             else:
                 self.move_piece('bk', m.from_square, m.to_square)
                 self.move_piece('br', rook_start, rook_target)
+                self.black_castle_right_flag = False
+                self.black_castle_left_flag = False
         if m.move_type == MoveType.CASTLE_QUEENSIDE:
             rook_start = m.to_square + 1
             rook_target = m.to_square - 2
             if m.color == 1:
                 self.move_piece('wk', m.from_square, m.to_square)
                 self.move_piece('wr', rook_start, rook_target)
+                self.white_castle_right_flag = False
+                self.white_castle_left_flag = False
             else:
                 self.move_piece('bk', m.from_square, m.to_square)
                 self.move_piece('br', rook_start, rook_target)
+                self.black_castle_right_flag = False
+                self.black_castle_left_flag = False
 
         # Capture
         if m.move_type == MoveType.CAPTURE:
@@ -105,6 +113,25 @@ class Board:
             prom_piece = f"{col_char}{m.promoted_piece.value}"
             self.add_piece(prom_piece, m.to_square)
 
+        # Update castle flags
+        if piece == 'wk':
+            self.white_castle_right_flag = False
+            self.white_castle_left_flag = False
+        if piece == 'bk':
+            self.black_castle_right_flag = False
+            self.black_castle_left_flag = False
+
+        if piece == 'wr':
+            if m.from_square == 0:
+                self.white_castle_left_flag = False
+            if m.from_square == 7:
+                self.white_castle_right_flag = False
+        if piece == 'br':
+            if m.from_square == 56:
+                self.black_castle_left_flag = False
+            if m.from_square == 63:
+                self.black_castle_right_flag = False
+            
         self.history.append(m)
 
     def move_piece(self, bb, from_square, to_square):
@@ -180,6 +207,46 @@ class Board:
         reverse_rows(chessboard)
         for row in chessboard:
             print(row)
+
+    def get_board_list(self):
+        chessboard = [
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        for i in range(64):
+            if bitboard_to_binarystring(self.pieces['wp'])[i] == '1':
+                chessboard[i//8][i%8] = 'P'
+            if bitboard_to_binarystring(self.pieces['wn'])[i] == '1':
+                chessboard[i//8][i%8] = 'N'
+            if bitboard_to_binarystring(self.pieces['wb'])[i] == '1':
+                chessboard[i//8][i%8] = 'B'
+            if bitboard_to_binarystring(self.pieces['wr'])[i] == '1':
+                chessboard[i//8][i%8] = 'R'
+            if bitboard_to_binarystring(self.pieces['wq'])[i] == '1':
+                chessboard[i//8][i%8] = 'Q'
+            if bitboard_to_binarystring(self.pieces['wk'])[i] == '1':
+                chessboard[i//8][i%8] = 'K'
+            
+            if bitboard_to_binarystring(self.pieces['bp'])[i] == '1':
+                chessboard[i//8][i%8] = 'p'
+            if bitboard_to_binarystring(self.pieces['bn'])[i] == '1':
+                chessboard[i//8][i%8] = 'n'
+            if bitboard_to_binarystring(self.pieces['bb'])[i] == '1':
+                chessboard[i//8][i%8] = 'b'
+            if bitboard_to_binarystring(self.pieces['br'])[i] == '1':
+                chessboard[i//8][i%8] = 'r'
+            if bitboard_to_binarystring(self.pieces['bq'])[i] == '1':
+                chessboard[i//8][i%8] = 'q'
+            if bitboard_to_binarystring(self.pieces['bk'])[i] == '1':
+                chessboard[i//8][i%8] = 'k'
+
+        reverse_rows(chessboard)
+        return chessboard
 
     def list_to_bitboard(self, board):
         reverse_rows(board)

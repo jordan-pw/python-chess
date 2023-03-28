@@ -1,9 +1,9 @@
 import numpy as np
 
-from enum import Enum
 from bitutils import northeast_one, northwest_one, southeast_one, southwest_one
 
 def precompute_knight_moves():
+
     knight_moves = [None] * 64
     knight_bitboards = [None] * 64
 

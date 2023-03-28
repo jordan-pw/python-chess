@@ -12,7 +12,6 @@ class Move:
     def __repr__(self):
         return f"{self.color} {self.piece}: {self.from_square} -> {self.to_square} ({self.move_type})"
 
-
 class MoveType(Enum):
     NORMAL = 1
     PAWN_DOUBLE = 2
